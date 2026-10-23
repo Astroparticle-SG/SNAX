@@ -1,25 +1,13 @@
 import os
 import numpy as np
 import pandas as pd
-from packaging import version
-import importlib.metadata
-
-
-# Check for scipy version for deprecated 'trapz' method
-module_version = importlib.metadata.version("scipy")
-if version.parse(module_version) >= version.parse("1.14.0"):
-    from scipy.integrate import trapezoid
-else:
-    from scipy.integrate import trapz as trapezoid
+from scipy.integrate import trapezoid
 
 from scipy.interpolate import interp1d
 
 
 # Get data file paths
-try:
-    from importlib.resources import files
-except ImportError:
-    from importlib_resources import files
+from importlib.resources import files
 
 
 

@@ -1,43 +1,154 @@
 [build-system]
-requires = ["setuptools>=64", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "snudd"
-version = "1.0.0"
-authors = [
-    {name = "Dorian Amaral"},
-    {name = "David Cerdeno"},
-    {name = "Andrew Cheek"},
-    {name = "Valeria Costa"},
-    {name = "Patrick Foldenauer"},
-]
+dynamic = ["version"]
+description = "Solar neutrino scattering rates for direct detection experiments, including NSI."
 readme = "README.md"
 requires-python = ">=3.11"
+license = "GPL-3.0-only"
+license-files = ["LICENSE"]
+keywords = ["neutrino", "direct detection", "NSI", "solar neutrinos"]
+authors = [
+  { name = "Dorian Amaral" },
+  { name = "David Cerdeno" },
+  { name = "Andrew Cheek" },
+  { name = "Valeria Costa" },
+  { name = "Patrick Foldenauer" },
+  { name = "Juehang Qin" },
+]
+maintainers = [
+  { name = "Juehang Qin" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Physics",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: Implementation :: CPython",
+]
 dependencies = [
-    "numpy>=1.22",
-    "scipy>=1.8",
-    "pandas>=1.3",
-    "packaging",
+  "numpy>=1.22",
+  "scipy>=1.8",
+  "pandas>=1.3",
 ]
 
 [project.optional-dependencies]
-numba = [
-    "numba>=0.57"
+numba = ["numba>=0.57"]
+
+[project.urls]
+Issues = "https://github.com/Astroparticle-SG/SNAX/issues"
+Source = "https://github.com/Astroparticle-SG/SNAX"
+
+[tool.hatch.version]
+path = "snudd/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+exclude = ["/.github"]
+
+[tool.hatch.envs.default]
+dependencies = [
+  "coverage[toml]>=6.5",
+  "pytest",
 ]
-test = [
-    "pytest>=7",
-    "pytest-cov>=4",
+[tool.hatch.envs.default.scripts]
+test = "pytest {args:tests}"
+test-cov = "coverage run -m pytest {args:tests}"
+cov-report = [
+  "- coverage combine",
+  "coverage report",
+  "coverage xml",
+]
+cov = [
+  "test-cov",
+  "cov-report",
 ]
 
-[tool.setuptools.packages.find]
-include = ["snudd*"]
+[[tool.hatch.envs.all.matrix]]
+python = ["3.11", "3.12", "3.13", "3.14"]
 
-[tool.setuptools.package-data]
-snudd = ["data/*", "data/**/*"]
+[tool.hatch.envs.lint]
+detached = true
+dependencies = [
+  "ruff>=0.9",
+]
+[tool.hatch.envs.lint.scripts]
+check = [
+  "ruff check {args:.}",
+  "ruff format --check --diff {args:.}",
+]
+fmt = [
+  "ruff format {args:.}",
+  "ruff check --fix {args:.}",
+  "check",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
 [tool.coverage.run]
-source = ["snudd"]
+source_pkgs = ["snudd", "tests"]
+branch = true
+parallel = true
+
+[tool.coverage.paths]
+snudd = ["snudd", "*/SNAX/snudd"]
+tests = ["tests", "*/SNAX/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
+
+[tool.ruff]
+line-length = 79
+target-version = "py311"
+extend-exclude = ["notebooks"]
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "UP", # pyupgrade
+    "B",  # flake8-bugbear
+    "SIM", # flake8-simplify
+    "I",  # isort
+    "ASYNC", # flake8-async
+    "S",  # flake8-bandit
+    "ARG", # flake8-unused-arguments
+    "Q",  # flake8-quotes
+    "NPY", # numpy-specific rules
+    "PD",  # pandas-specific rules
+    "N",  # pep8-naming
+    "W",  # warning
+    "PLC", # pylint convention
+    "PLE", # pylint error
+    "PLW", # pylint warning
+    "RUF", # ruff-specific rules
+]
+ignore = [
+    "COM812", # Trailing comma rule that conflicts with formatter
+    # Physics notation (E_R, E_nu, UPMNS, ...) is clearer than PEP 8 names
+    "N802",   # Function names
+    "N803",   # Argument names
+    "N806",   # Variable names in functions
+    "N816",   # Mixed-case global names
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]  # Allow assert statements in tests
+
+# Enable Ruff's formatter
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+docstring-code-format = true
