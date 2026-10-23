@@ -1,7 +1,6 @@
 import numpy as np
 from scipy import interpolate
 from snudd.config import get_data
-import ACstyle 
 
 E_low_ext = 1e-2
 

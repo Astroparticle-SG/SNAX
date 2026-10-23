@@ -3,3 +3,7 @@ snudd.egg-info/
 .DS_Store
 .ipynb_checkpoints/
 __pycache__/
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
