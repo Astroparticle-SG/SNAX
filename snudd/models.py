@@ -3,21 +3,22 @@
 from __future__ import annotations
 
 import typing
-import numpy as np
 from abc import ABC, abstractmethod
 
+import numpy as np
 
 import snudd.config as config
 
 if typing.TYPE_CHECKING:
-    from snudd.targets import Nucleus, Electron
+    from snudd.targets import Nucleus
 
 
-# -------------------------- Helper functions ----------------------------------
+# -------------------------- Helper functions ---------------------------------
 
 
 def _ER_max(Enu, mtarget):
-    """Maximum recoil energy ERmax for neutrino energy Enu of target mith mass mtarget."""
+    """Maximum recoil energy ERmax for neutrino energy Enu of target mith mass
+    mtarget."""
 
     return 2 * Enu**2 / (mtarget + 2 * Enu)
 
@@ -68,25 +69,27 @@ class Model(ABC):
 
 
 class GeneralNSI(Model):
-    """A general NSI model, which takes a matrix of NSI couplings and angles."""
+    """A general NSI model, which takes a matrix of NSI couplings and
+    angles."""
 
     def __init__(self, eps_matrix, eta, phi):
-        # In general, eps_matrix is a 3x3 array of complex numbers (the NSI magnitudes)
+        # In general, eps_matrix is a 3x3 array of complex numbers (the NSI
+        # magnitudes)
         # Check if it is hermitian
         herm3x3, message = _is_hermitian_3x3(eps_matrix)
         if not herm3x3:
             print(
-                """
+                f"""
         *** WARNING ***
-NSI matrix 'eps_matrix' is not a {} matrix: 
-{}
+NSI matrix 'eps_matrix' is not a {message} matrix:
+{eps_matrix}
 It should be a hermitian 3x3 matrix of the form:
 [[eps_ee,   eps_em,   eps_et],
  [eps_em^*, eps_mm,   eps_mt],
  [eps_et^*, eps_mt^*, eps_tt]]
 
 Code will run, but results may be unphysical!
-""".format(message, eps_matrix)
+"""
             )
         self.eps_matrix = eps_matrix
         self.eta = eta
@@ -104,7 +107,8 @@ Code will run, but results may be unphysical!
 
     @property
     def xi_u(self):
-        """Return the up-quark-rotated charged part of the NSI factorisation."""
+        """Return the up-quark-rotated charged part of the NSI
+        factorisation."""
         return (
             np.sqrt(5)
             / 3
@@ -113,7 +117,8 @@ Code will run, but results may be unphysical!
 
     @property
     def xi_d(self):
-        """Return the down-quark-rotated charged part of the NSI factorisation."""
+        """Return the down-quark-rotated charged part of the NSI
+        factorisation."""
         return (
             np.sqrt(5)
             / 3
@@ -122,7 +127,8 @@ Code will run, but results may be unphysical!
 
     @property
     def xi_e(self):
-        """Return the electron-rotated charged part of the NSI factorisation."""
+        """Return the electron-rotated charged part of the NSI
+        factorisation."""
         return np.sqrt(5) * np.cos(self.eta) * np.sin(self.phi)
 
     def G_nucleus_coupling_matrix(self, nucleus):

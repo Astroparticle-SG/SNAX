@@ -1,8 +1,7 @@
 import numpy as np
 from scipy import interpolate
 
-from snudd.config import trapezoid, get_data
-
+from snudd.config import get_data, trapezoid
 
 E_R_total, total_bkg = np.loadtxt(get_data("exps/xnt/bkg_xnt.txt")).T
 E_R_nu, nu_bkg = np.loadtxt(get_data("exps/xnt/bkg_solar_nu.txt")).T
@@ -23,7 +22,10 @@ nu_bkg = np.insert(nu_bkg, len(nu_bkg), nu_bkg[-1])
 total_bkg_interp = interpolate.interp1d(E_R_total / 1e6, total_bkg)
 nu_bkg_interp = interpolate.interp1d(E_R_nu / 1e6, nu_bkg)
 
-total_bkg_spec_fn = lambda E_R: total_bkg_interp(E_R) - nu_bkg_interp(E_R)
+
+def total_bkg_spec_fn(E_R):
+    return total_bkg_interp(E_R) - nu_bkg_interp(E_R)
+
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt

@@ -1,5 +1,6 @@
 import numpy as np
 from scipy import interpolate
+
 from snudd.config import get_data
 
 E_low_ext = 1e-2
@@ -21,7 +22,11 @@ range_double = interp_double(E_R_range)
 flat_bkg_rate_scalar = (
     (19 + 565 + 139) / (30 - 2) / 14
 )  # Taken from Table 2 of 1309.7024. Converted to /ton-yr-keVnr.
-total_bkg_spec_fn = lambda E_R: flat_bkg_rate_scalar + interp_double(E_R)
+
+
+def total_bkg_spec_fn(E_R):
+    return flat_bkg_rate_scalar + interp_double(E_R)
+
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
@@ -43,7 +48,8 @@ if __name__ == "__main__":
 
     # plt.title(r"Theoretical E$\nu$ES rate in Xe")
     plt.ylabel(
-        r"${\rm d}R/{\rm d}E_R\,\,\left[{\rm ton}^{-1}\,{\rm yr}^{-1}\,{\rm keV}^{-1}\right]$",
+        r"${\rm d}R/{\rm d}E_R\,\,"
+        r"\left[{\rm ton}^{-1}\,{\rm yr}^{-1}\,{\rm keV}^{-1}\right]$",
         size=14,
     )
     plt.xlabel(r"$E_{R}\,\,\left[{\rm keV}\right]$", size=14)

@@ -3,30 +3,31 @@
 import warnings
 
 import numpy as np
+from scipy.special import erf
+
 from snudd.config import trapezoid
 from snudd.efficiencies import (
     Efficiency,
-    efficiency_lz_nr,
-    efficiency_lz_er,
-    efficiency_xnt_nr,
-    efficiency_xnt_er,
-    efficiency_pandaX,
     efficiency_lz_b8,
+    efficiency_lz_er,
+    efficiency_pandaX,
     efficiency_xnt_2026,
+    efficiency_xnt_er,
 )
-from snudd.quenching import Quenching, quenching_xe, quenching_electron
-from scipy.special import erf
+from snudd.quenching import Quenching, quenching_electron, quenching_xe
 
 
 def resolution_lux(E_R):
-    """Energy resolution (fractionally) as a function of the energy for LUX-ZEPLIN
+    """Energy resolution (fractionally) as a function of the energy for
+    LUX-ZEPLIN
     https://arxiv.org/pdf/1610.02076"""
     a = 0.33 * 1e-3  # Last factor is to convert from keV^{1/2} to GeV^{1/2}
     return a / np.sqrt(E_R)
 
 
 def resolution_xnt(E_R):
-    """Energy resolution (fractionally) as a function of the energy for Xenon N Tonne
+    """Energy resolution (fractionally) as a function of the energy for Xenon
+    N Tonne
     https://arxiv.org/pdf/2006.09721"""
     a = 0.310 * 1e-3  # Last factor is to convert from keV^{1/2} to GeV^{1/2}
     b = 0.0037
@@ -57,7 +58,8 @@ class Resolution:
         )
 
     def extended_resolution(self, E_R, E_thresh_50_new):
-        """Extend resolution function below original 50% efficiency point by capping it at that value."""
+        """Extend resolution function below original 50% efficiency point by
+        capping it at that value."""
         shift = (
             self.quenching.convert_nr2ee(self.efficiency.threshold_50)
             - E_thresh_50_new
@@ -67,7 +69,7 @@ class Resolution:
             E_R < E_thresh_50_new,
         ]
         funclist = [
-            lambda E: self(
+            lambda _: self(
                 self.quenching.convert_nr2ee(self.efficiency.threshold_50)
             ),
             lambda E: self.resolution_fn(E + shift),
@@ -81,8 +83,10 @@ class Resolution:
 
 
 class Convolver:
-    """Supplies convolution functionality given a total spectrum (total signal + background) and extended energy values.
-    Can give the convolved spectrum or can skip convolution integral entirely to calculate binned rate.
+    """Supplies convolution functionality given a total spectrum (total signal
+    + background) and extended energy values.
+    Can give the convolved spectrum or can skip convolution integral entirely
+    to calculate binned rate.
     """
 
     def __init__(
@@ -119,7 +123,8 @@ class Convolver:
         return spec_ee2nr(E_R, convolution, self.quenching)
 
     def _energy_response_function(self, E_ee, E_1, E_2):
-        """Calculate energy response function needed for quick post-convolution rate calculation (Le Trick)."""
+        """Calculate energy response function needed for quick
+        post-convolution rate calculation (Le Trick)."""
         sigma = self.resolution(E_ee) * E_ee
         E_1_ee = self.quenching.convert_nr2ee(E_1)
         E_2_ee = self.quenching.convert_nr2ee(E_2)
@@ -128,7 +133,8 @@ class Convolver:
         return 0.5 * (erf2 - erf1)
 
     def _energy_response_integrand(self, E_1, E_2):
-        """Calculate the integrand of the energy response integral, ready for integration."""
+        """Calculate the integrand of the energy response integral, ready for
+        integration."""
         self._check_energy_endpoints(
             [E_1, E_2]
         )  # Catch potential introduction of inaccuracies
@@ -142,7 +148,8 @@ class Convolver:
         return spectrum_ee * efficiencies * energy_responses
 
     def _response_function(self, E_prime_ee, E_ee, Z=5):
-        """The response function to convolve with. Only Gaussian implemented."""
+        """The response function to convolve with. Only Gaussian
+        implemented."""
         sigma = self.resolution(E_prime_ee) * E_prime_ee
         condlist = [E_ee - Z * sigma >= E_prime_ee]
         funclist = [
@@ -152,7 +159,8 @@ class Convolver:
         return np.piecewise(E_prime_ee, condlist, funclist)
 
     def _convolution_integrand(self, E_R):
-        """Calculate the integrand of the convolution integral, ready for integration."""
+        """Calculate the integrand of the convolution integral, ready for
+        integration."""
         self._check_energy_endpoints(
             E_R
         )  # Catch potential introduction of inaccuracies
@@ -163,19 +171,26 @@ class Convolver:
         return spectrum_ee * efficiencies * responses
 
     def _check_energy_endpoints(self, E_R):
-        """Raise a warning if desired recoil energy range is beyond that of the supplied spectrum, introducing
+        """Raise a warning if desired recoil energy range is beyond that of the
+        supplied spectrum, introducing
         inaccuracies to the convolution.
         """
         if np.min(E_R) < np.min(self.E_primes):
             warnings.warn(
-                f"Minimum of supplied recoil energy ({np.min(E_R)}) is less than "
-                f"minimum of supplied E_prime ({np.min(self.E_primes)}). Convolution may not be accurate."
+                f"Minimum of supplied recoil energy ({np.min(E_R)}) is "
+                "less than "
+                f"minimum of supplied E_prime ({np.min(self.E_primes)}). "
+                "Convolution may not be accurate.",
+                stacklevel=2,
             )
 
         elif np.max(E_R) > np.max(self.E_primes):
             warnings.warn(
-                f"Maximum of supplied recoil energy ({np.max(E_R)}) is greater than "
-                f"maximum of supplied E_prime ({np.max(self.E_primes)}). Convolution may not be accurate."
+                f"Maximum of supplied recoil energy ({np.max(E_R)}) is "
+                "greater than "
+                f"maximum of supplied E_prime ({np.max(self.E_primes)}). "
+                "Convolution may not be accurate.",
+                stacklevel=2,
             )
 
 
@@ -189,7 +204,8 @@ def gaussian_response(E, mu, sigma):
 
 
 def spec_nr2ee(E_nr, spec_nr, quenching):
-    """To convert from keV_nr to keV_ee spec for NRs. Specifically for xenon."""
+    """To convert from keV_nr to keV_ee spec for NRs. Specifically for
+    xenon."""
     conv_factor = 1 / (
         quenching(E_nr) + quenching.derivative(E_nr) * E_nr * 1e6
     )

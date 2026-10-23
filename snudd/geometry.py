@@ -1,8 +1,7 @@
 """Provides solar nadir angles due to earth's motion."""
 
 import numpy as np
-from scipy.integrate import odeint as ODEint
-
+from scipy.integrate import odeint
 
 # EARTH ORBIT PARAMETERS
 AU = 1.495978707e11  # Astronomic unit in m
@@ -16,10 +15,12 @@ days_in_yr = 365.25  # Number of days in earth year
 a = 1.0  # Normalize the semimajor axis to 1 AU
 mu = 4 * np.pi**2  # Normalize grav pot mu to 4 pi^2
 T_earth = 2 * np.pi * np.sqrt(a**3 / mu)  # Orbital period in years
+# Perihelion and aphelion distance as a function of semimajor axis a and
+# eccentricity e_earth
 r_peri, r_apo = (
     a * (1.0 - e_earth),
     a * (1.0 + e_earth),
-)  # Perihelion and aphelion distance as a function of semimajor axis a and eccentricity e_earth
+)
 v_peri, v_apo = [
     np.sqrt(mu * (2.0 / r - 1.0 / a)) for r in (r_peri, r_apo)
 ]  # Perihelion and aphelion scalar velocities
@@ -29,14 +30,15 @@ v_peri, v_apo = [
 ############################
 
 
-def deriv(X, t):
-    """Returns the derivative of the position vector and velocity vector for the system of 1st order eqs"""
-    x, v = X.reshape(
-        2, -1
-    )  # Setting the position vector to the current (2D) position and the velocity to the current velocity
-    acc = (
-        -x * mu * ((x**2).sum()) ** -1.5
-    )  # The acceleration is given by - mu r_vec/r^3 (But me normalize mu = G M = 1)
+def deriv(X, _t):
+    """Returns the derivative of the position vector and velocity vector for
+    the system of 1st order eqs"""
+    # Setting the position vector to the current (2D) position and the velocity
+    # to the current velocity
+    x, v = X.reshape(2, -1)
+    # The acceleration is given by - mu r_vec/r^3 (But me normalize mu = G M
+    # = 1)
+    acc = -x * mu * ((x**2).sum()) ** -1.5
     return np.hstack((v, acc))  # Returning the velocity and acceleration
 
 
@@ -48,8 +50,9 @@ def azimuth(t):
 
 
 def nadir(times, thetas, th_det):
-    """Returns the solar neutrino nadir angle (taken with respect to the vertical z-axis)
-    for a given time series (in years) with corresponding true anomalies (thetas) at detector latitude (th_det)"""
+    """Returns the solar neutrino nadir angle (taken with respect to the
+    vertical z-axis) for a given time series (in years) with corresponding true
+    anomalies (thetas) at detector latitude (th_det)"""
     nu_dot_n = np.cos(thetas) * (
         np.cos(th_eccl) * np.sin(th_det) * np.cos(azimuth(times))
         + np.sin(th_eccl) * np.cos(th_det)
@@ -68,7 +71,8 @@ class SolarAngles:
     def __init__(self, latitude, t0, T):
         """Latitude in degrees."""
         self.lat = (90.0 - latitude) * np.pi / 180.0  # Latitude in radians
-        self.t0 = t0  # Start of data taking period in days after perihelion (~ 3rd Jan)
+        # Start of data taking period in days after perihelion (~ 3rd Jan)
+        self.t0 = t0
         self.tdat = T  # Number of days of data taking from t0
 
     def orbit(self):
@@ -93,11 +97,13 @@ class SolarAngles:
         else:
             times = times_dat
 
-        # SOLVE the differential equations with initial conditions, times in units of years
-        coords, info = ODEint(deriv, X0, times / days_in_yr, full_output=True)
+        # SOLVE the differential equations with initial conditions, times in
+        # units of years
+        coords, _ = odeint(deriv, X0, times / days_in_yr, full_output=True)
 
         # Return the time series and coordinates;
-        # Remove first and last coordinate element from ODE solving to match length of times array
+        # Remove first and last coordinate element from ODE solving to match
+        # length of times array
         return times[index_start + 1 : -1], coords[index_start + 1 : -1]
 
     def nadir_angles(self):
@@ -120,7 +126,8 @@ class SolarAngles:
         return times, nads
 
     def cnadir_hist(self, bins=50):
-        """Compute binned histogram of cos(nadir) with [bins] number of bins."""
+        """Compute binned histogram of cos(nadir) with [bins] number of
+        bins."""
 
         _, coords = self.orbit()
         _, nadirs = self.nadir_angles()

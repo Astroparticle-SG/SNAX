@@ -1,20 +1,24 @@
 """Earth Matter effects for Neutrino Oscillations with NSI."""
 
 from __future__ import annotations
+
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Protocol, Callable, Sequence, Optional
-from snudd.nsi import oscillation as osc
+from typing import Protocol
 
 # Keep regular numpy too
 import numpy as np
+
+from snudd.nsi import oscillation as osc
 
 # --- Backend selection (NumPy or JAX) ---
 try:
     # must be BEFORE jax import
     import os
 
-    # force CPU backend to avoid errors with unsupported complex operations on GPU/TPU;
-    # remove this line if you want to use JAX on GPU/TPU and ensure your JAX version supports complex numbers on that backend
+    # force CPU backend to avoid errors with unsupported complex operations
+    # on GPU/TPU; remove this line if you want to use JAX on GPU/TPU and
+    # ensure your JAX version supports complex numbers on that backend
     os.environ["JAX_PLATFORM_NAME"] = "cpu"
     import jax.numpy as jnp
     from jax import jit, lax
@@ -28,7 +32,8 @@ except ImportError:
 
 
 def jitify(f):
-    """Utility to JIT-compile a function if JAX is available, otherwise return it unchanged."""
+    """Utility to JIT-compile a function if JAX is available, otherwise return
+    it unchanged."""
     return jit(f) if USE_JAX else f
 
 
@@ -43,13 +48,14 @@ class EarthModel(Protocol):
     def rhoYe_gcm3(self, r_over_RE):
         """
         Return Ye * rho(r) in g/cm^3 for a vector of r/RE ∈ [0,1].
-        This allows for efficient vectorized evaluation along the neutrino trajectory.
+        This allows for efficient vectorized evaluation along the neutrino
+        trajectory.
         Must accept scalar OR ndarray input and return same shape output.
         """
         ...
 
 
-# 1) Direct callable hook ------------------------------------------------------
+# 1) Direct callable hook -------------------------------------------------
 @dataclass
 class CallableEarth(EarthModel):
     f: Callable[[float], float]  # f(r_over_RE) -> Ye*rho [g/cm^3]
@@ -76,15 +82,17 @@ class LayeredPolyEarth(EarthModel):
     """
     User supplies:
       - xr_km: layer boundaries (km), monotonically increasing (len L+1)
-      - coeffs: list of (a,b,c,d) for each layer (len L), evaluated in r = (radius / RE)
-      - Ye_core, Ye_mantle: piecewise-constant Ye (or pass a custom Ye(r/RE) via ye_fn)
+      - coeffs: list of (a,b,c,d) for each layer (len L), evaluated in
+        r = (radius / RE)
+      - Ye_core, Ye_mantle: piecewise-constant Ye (or pass a custom Ye(r/RE)
+        via ye_fn)
     """
 
     xr_km: Sequence[float]
     coeffs: Sequence[tuple]  # [(a,b,c,d), ...] one per layer
     Ye_core: float = 0.466
     Ye_mantle: float = 0.494
-    ye_fn: Optional[Callable[[float], float]] = (
+    ye_fn: Callable[[float], float] | None = (
         None  # overrides Ye_core/mantle if given
     )
 
@@ -96,26 +104,31 @@ class LayeredPolyEarth(EarthModel):
             raise ValueError("coeffs length must be len(xr_km)-1")
         self.coeffs_arr = np.asarray(self.coeffs)
         self.xr = xr
-        self.RE_KM = 6371.0  # Earth radius in km; used for r/RE conversion in rhoYe_gcm3
+        # Earth radius in km; used for r/RE conversion in rhoYe_gcm3
+        self.RE_KM = 6371.0
 
     def _Ye(self, r):
-        """Determine electron density Ye for given r; if ye_fn is given, it overrides the core/mantle split."""
+        """Determine electron density Ye for given r; if ye_fn is given, it
+        overrides the core/mantle split."""
         if self.ye_fn is not None:
             Ye = self.ye_fn(r)  # must support arrays
         else:
-            # default: core vs mantle split at r = 0.546 like classic PREM usage
+            # default: core vs mantle split at r = 0.546 like classic PREM
+            # usage
             r_thr = 0.546
             Ye = np.where(r <= r_thr, self.Ye_core, self.Ye_mantle)
 
         return Ye
 
     def rhoYe_gcm3(self, r_over_RE):
-        """Vectorised version of rhoYe_gcm3 for array inputs. Computes Ye*rho for each r/RE in the input array."""
+        """Vectorised version of rhoYe_gcm3 for array inputs. Computes
+        Ye*rho for each r/RE in the input array."""
         # Restrict to [0,1] and convert to km
         r = np.clip(r_over_RE, 0.0, 1.0)
         R_km = r * self.RE_KM
 
-        # vectorised layer index calculation; right-edge binning; clamp to last layer
+        # vectorised layer index calculation; right-edge binning; clamp to last
+        # layer
         k = np.searchsorted(self.xr, R_km, side="right") - 1
         k = np.clip(k, 0, len(self.xr) - 2)
 
@@ -137,7 +150,8 @@ class TabulatedEarth(EarthModel):
     Provide tabulated radius and Ye*rho values:
       - r_nodes: array of r/RE in [0,1]
       - rhoYe_nodes: array of Ye*rho (g/cm^3)
-    Uses a monotone cubic spline (PCHIP-like) via numpy interp fallback + local slopes.
+    Uses a monotone cubic spline (PCHIP-like) via numpy interp fallback +
+    local slopes.
     """
 
     def __init__(self, r_nodes: Sequence[float], rhoYe_nodes: Sequence[float]):
@@ -164,7 +178,8 @@ class TabulatedEarth(EarthModel):
         np.interp already supports arrays. No scalar casting.
         """
         r = np.clip(r_over_RE, 0.0, 1.0)
-        # simple, safe interpolation; replace with scipy PchipInterpolator if you like
+        # simple, safe interpolation; replace with scipy PchipInterpolator if
+        # you like
         return np.interp(r, self.r, self.y)
 
 
@@ -211,8 +226,10 @@ def _core_evolution_kernel(H, dxs, tRad):
      - dxs: (Nst,) array of slice widths in units of tRad
      - tRad: total path length in units of tRad
     Returns:
-     - S: (N_E, 3, 3) array of final evolution matrices S[n] = M[n,0] @ M[n,1] @ ... @ M[n,Nst-1]
-    Note: this function is JIT-compiled with JAX if available, otherwise runs with NumPy.
+     - S: (N_E, 3, 3) array of final evolution matrices
+       S[n] = M[n,0] @ M[n,1] @ ... @ M[n,Nst-1]
+    Note: this function is JIT-compiled with JAX if available, otherwise runs
+    with NumPy.
     """
 
     # ------------------------------------------------------------------ #
@@ -233,8 +250,10 @@ def _core_evolution_kernel(H, dxs, tRad):
     M = jnp.einsum("nkia,nka,nkja->nkij", Um, phase, jnp.conj(Um))
 
     # --- Multiply evolution matrices along slices ---
-    # This is the bottleneck step. We want S[n] = M[n,0] @ M[n,1] @ ... @ M[n,Nst-1].
-    # A naive loop is O(N_E * Nst), but we can do better with a parallel scan (prefix product) in O(N_E * log(Nst)) time.
+    # This is the bottleneck step. We want
+    # S[n] = M[n,0] @ M[n,1] @ ... @ M[n,Nst-1].
+    # A naive loop is O(N_E * Nst), but we can do better with a parallel scan
+    # (prefix product) in O(N_E * log(Nst)) time.
     if USE_JAX:
         # Fast associative scan (parallel)
         def matmul(a, b):
@@ -271,13 +290,15 @@ def _magnus_evolve(H, dxs, tRad):
     Alternative evolution using the Magnus expansion up to second order
     Approximate S ≈ exp(-i · (Ω1 + Ω2)) where Ω is Hermitian order-by-order.
         Ω1 = ∫ H(t) dt ≈ Σ H_k · dx_k
-        Ω2 = -i/2 ∫∫ [H(t1), H(t2)] dt1 dt2 ≈ -i/2 Σ_{k<l} [H_k, H_l] · dx_k · dx_l.
+        Ω2 = -i/2 ∫∫ [H(t1), H(t2)] dt1 dt2
+           ≈ -i/2 Σ_{k<l} [H_k, H_l] · dx_k · dx_l.
 
      - H:   (N_E, Nst, 3, 3) array of Hamiltonians for each energy and slice
      - dxs: (Nst,) array of slice widths in units of tRad
      - tRad: total path length in units of tRad
     Returns:
-     - S: (N_E, 3, 3) array of final evolution matrices S[n] = M[n,0] @ M[n,1] @ ... @ M[n,Nst-1]
+     - S: (N_E, 3, 3) array of final evolution matrices
+       S[n] = M[n,0] @ M[n,1] @ ... @ M[n,Nst-1]
     """
 
     # First order term: Ω1 = Σ H_k · dx_k Hermitian
@@ -316,7 +337,7 @@ class EarthProbEvolve:
         self,
         model,
         osc_params=osc.osc_params_best,
-        earthmodel: Optional[EarthModel] = None,
+        earthmodel: EarthModel | None = None,
         Nst: int = 50,
         Nav: int = 50,
     ):
@@ -333,7 +354,8 @@ class EarthProbEvolve:
         self._Vf = None
 
     def _V_matrix(self):
-        # Cache the V matrix since it doesn't depend on energy; only on the NSI parameters.
+        # Cache the V matrix since it doesn't depend on energy; only on the NSI
+        # parameters.
         if self._Vf is None:
             Vf = np.zeros((3, 3), dtype=np.complex128)
             Vf[0, 0] = 1.0
@@ -357,8 +379,8 @@ class EarthProbEvolve:
         dxs = xmaxs - xmins  # (Nst,)
 
         # Sample points inside each slice: shape (Nst, Nav+1)
-        l = np.arange(self.Nav + 1)
-        xi = xmins[:, None] + dxs[:, None] * l[None, :] / (self.Nav + 1)
+        j = np.arange(self.Nav + 1)
+        xi = xmins[:, None] + dxs[:, None] * j[None, :] / (self.Nav + 1)
 
         # Vectorised r/RE — inline the geometry formula to avoid a Python loop
         norm = 1.0 / (RE_KM + ATM_KM)
@@ -369,7 +391,8 @@ class EarthProbEvolve:
             np.maximum(0.0, 1 + xi**2 - 2 * xi * root_common)
         ) / (norm * RE_KM)  # (Nst, Nav+1)
 
-        # rhoYe evaluation — earthmodel must accepts ndarray input and return array output for this to be efficient
+        # rhoYe evaluation — earthmodel must accepts ndarray input and return
+        # array output for this to be efficient
         rhoYe = self.earthmodel.rhoYe_gcm3(r_over_RE)  # (Nst, Nav+1)
         Vav = rhoYe.mean(axis=1)  # (Nst,)
 
@@ -379,14 +402,17 @@ class EarthProbEvolve:
         self, enus_GeV: np.ndarray, cnadir: float, fast: bool = False
     ) -> np.ndarray:
         """
-        Compute the (N_E, 3, 3) array of S-matrices for N_E energies at fixed cnadir.
+        Compute the (N_E, 3, 3) array of S-matrices for N_E energies at fixed
+        cnadir.
         Replaces the per-energy loop over S_matrix().
         """
-        # Neutrino energies must be in GeV for the Hamiltonian construction; ensure correct type and shape
+        # Neutrino energies must be in GeV for the Hamiltonian construction;
+        # ensure correct type and shape
         Enus = np.asarray(enus_GeV, dtype=float)
         N_E = len(Enus)
 
-        # For cos(nadir) <= 0 (no matter crossing), return identity matrices immediately
+        # For cos(nadir) <= 0 (no matter crossing), return identity matrices
+        # immediately
         if cnadir <= 0:
             return np.broadcast_to(
                 np.eye(3, dtype=np.complex128), (N_E, 3, 3)
@@ -424,11 +450,13 @@ class EarthProbEvolve:
         # Compute matter evolution S-matrices for all energies at once
         # ------------------------------------------------------------------ #
         if fast:
-            # Fast but less accurate: use Magnus expansion instead of exact eigendecomposition + scan
+            # Fast but less accurate: use Magnus expansion instead of exact
+            # eigendecomposition + scan
             return np.array(_magnus_evolve(H, dxs, self.tRad))
 
         else:
-            # Exact but slower: eigendecomposition + scan. JIT-compiled with JAX if available for speed.
+            # Exact but slower: eigendecomposition + scan. JIT-compiled with
+            # JAX if available for speed.
             if USE_JAX:
                 H_backend = jnp.array(H)
                 dxs_backend = jnp.array(dxs)
@@ -455,22 +483,23 @@ class EarthProbEvolve:
         return np.matmul(np.matmul(S, rho_solar), Sdag)
 
 
-######################################################################################################
+##############################################################################
 #
 #                                  OLD CODE BELOW, KEPT FOR REFERENCE
 #                               (not used in the current implementation)
 #
-######################################################################################################
+##############################################################################
 
 
 class EarthProbEvolveOld:
-    """Old version of EarthProbEvolve with per-energy loop and no precomputation; kept for reference."""
+    """Old version of EarthProbEvolve with per-energy loop and no
+    precomputation; kept for reference."""
 
     def __init__(
         self,
         model,
         osc_params=osc.osc_params_best,
-        earthmodel: Optional[EarthModel] = None,
+        earthmodel: EarthModel | None = None,
         Nst: int = 50,
         Nav: int = 50,
     ):
@@ -539,8 +568,8 @@ class EarthProbEvolveOld:
             xmax = (t1 * (k + 1)) / self.Nst
             # average Ye*rho for this slice from whichever model was provided
             Vav = 0.0
-            for l in range(self.Nav + 1):
-                xi = xmin + (xmax - xmin) * (l / (self.Nav + 1))
+            for j in range(self.Nav + 1):
+                xi = xmin + (xmax - xmin) * (j / (self.Nav + 1))
                 r_over_RE = self._r_over_RE_along_chord(xi, cnadir)
                 Vav += self.earthmodel.rhoYe_gcm3(r_over_RE)
             Vav /= self.Nav + 1
@@ -553,7 +582,8 @@ class EarthProbEvolveOld:
 
     def evolve_rhosolar(self, rho_solar, enus_GeV, cnadir):
         """
-        rho_solar_stack: (N_E,3,3) complex array  [your solar density matrices at Earth surface]
+        rho_solar_stack: (N_E,3,3) complex array  [your solar density matrices
+                          at Earth surface]
         enus_GeV       : (N_E,) energies
         cnadir           : scalar cos(nadir)
         propagator     : an object with S_matrix(E, cnadir) -> (3,3) complex

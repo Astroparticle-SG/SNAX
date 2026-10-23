@@ -5,11 +5,14 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 from snudd import config
-from snudd.binding import ElectronBinder, binding_xe, binding_ar
+from snudd.binding import ElectronBinder, binding_ar, binding_xe
+from snudd.models import SM, Model
+from snudd.nsi.oscillation import osc_params_best
 from snudd.rrpa import rrpa_scaling
 from snudd.spectrum import SpectrumTrace
-from snudd.models import Model, SM
-from snudd.nsi.oscillation import osc_params_best
+
+# Shared default model, as in the original `model=SM()` default arguments
+SM_MODEL = SM()
 
 
 class Target(ABC):
@@ -25,7 +28,8 @@ class Target(ABC):
 
     @abstractmethod
     def number_targets_mass(self, E_R):
-        """The number of targets per unit mass (generally a function of E_R)."""
+        """The number of targets per unit mass (generally a function of
+        E_R)."""
         pass
 
     def momentum_transfer(self, E_R):
@@ -49,12 +53,15 @@ class Target(ABC):
 
         self._spec.prepare_probabilities()
 
-    def prepare_density(self, cnadirs=[-1], cnadir_weights=[1], fast=False):
+    def prepare_density(self, cnadirs=(-1,), cnadir_weights=(1,), fast=False):
         """
         Prepare neutrino density matrix for use in spectrum.
-        Give a list of cos(nadir) [cnadirs] and corresponding weights [cnadir_weights] to run earth matter evolution.
-        If cnadirs = [-1], no earth matter evolution is done and the density matrix is identity.
-        Fast mode uses Magnus expansion for earth matter evolution instead of full numerical eigendecomposition.
+        Give a list of cos(nadir) [cnadirs] and corresponding weights
+        [cnadir_weights] to run earth matter evolution.
+        If cnadirs = [-1], no earth matter evolution is done and the density
+        matrix is identity.
+        Fast mode uses Magnus expansion for earth matter evolution instead of
+        full numerical eigendecomposition.
         """
         if len(cnadirs) != len(cnadir_weights):
             raise ValueError(
@@ -64,14 +71,21 @@ class Target(ABC):
 
 
 class Nucleus(Target):
-    """A nucleus and its associated electron. Can get momentum transfer, nuclear form factor, number or nuclei/mass,
+    """A nucleus and its associated electron. Can get momentum transfer,
+    nuclear form factor, number or nuclei/mass,
     and number of free electrons/unit mass.
     """
 
     def __init__(
-        self, Z, A, mass=None, model: Model = SM(), osc_params=osc_params_best
+        self,
+        Z,
+        A,
+        mass=None,
+        model: Model = SM_MODEL,
+        osc_params=osc_params_best,
     ):
-        """Define nucleus by atomic number, weight, and mass. If mass not given, uses u*A."""
+        """Define nucleus by atomic number, weight, and mass. If mass not
+        given, uses u*A."""
         self.Z = Z
         self.A = A
         self._mass = mass
@@ -96,18 +110,21 @@ class Nucleus(Target):
 
     @property
     def E_max(self):
-        """Return maximum recoil energy due to a neutrino collision (from kinematics)."""
+        """Return maximum recoil energy due to a neutrino collision (from
+        kinematics)."""
         E_nu = (
             config.E_nus["hep"][-1] / 1000
         )  # Largest neutrino energy is from hep neutrinos (to GeV)
         return 2 * E_nu**2 / (self.mass + 2 * E_nu) * 1e6  # Conversion to keV
 
-    def number_targets_mass(self, E_R=None):
-        """Return the number of nuclei/unit mass of detector. kwarg for implementation with bound."""
+    def number_targets_mass(self, E_R=None):  # noqa: ARG002 (Target interface)
+        """Return the number of nuclei/unit mass of detector. kwarg for
+        implementation with bound."""
         return 1 / self.mass
 
     def form_factor(self, E_R):
-        """Return the form factor for the nucleus given recoil energy in GeV. Uses FormFactor component"""
+        """Return the form factor for the nucleus given recoil energy in GeV.
+        Uses FormFactor component"""
         q = self.momentum_transfer(E_R) * config.fm_conv
         return helm_form_factor(q, self.A)
 
@@ -117,19 +134,20 @@ class Nucleus(Target):
 
 
 class Electron(Target):
-    """An electron. Get momentum transfer and number free electrons/unit mass."""
+    """An electron. Get momentum transfer and number free electrons/unit
+    mass."""
 
     def __init__(
         self,
         nucleus,
         electron_binder: ElectronBinder,
         scaling=None,
-        model: Model = SM(),
+        model: Model = SM_MODEL,
     ):
         """Electron belongs to a nucleus and is a component of it."""
         self.nucleus = nucleus
         self.electron_binder = electron_binder
-        self.scaling = scaling if scaling is not None else lambda E: 1.0
+        self.scaling = scaling if scaling is not None else lambda _: 1.0
         self.osc_params = nucleus.osc_params
         self.model = model
         self._spec = SpectrumTrace(self)
@@ -140,7 +158,8 @@ class Electron(Target):
         return config.m_e
 
     def number_free_electrons(self, E_R):
-        """Return the number of free electrons available to scatter per unit mass."""
+        """Return the number of free electrons available to scatter per unit
+        mass."""
         if self.electron_binder is not None:
             available_electrons = self.electron_binder.available_electrons(E_R)
         else:
@@ -149,7 +168,8 @@ class Electron(Target):
         return available_electrons * self.nucleus.number_targets_mass()
 
     def number_targets_mass(self, E_R):
-        """Return scaled number of free electrons per unit mass. Use in RRPA."""
+        """Return scaled number of free electrons per unit mass. Use in
+        RRPA."""
         return self.number_free_electrons(E_R) * self.scaling(E_R)
 
     def cross_section_flavour(self, E_R, E_nu):

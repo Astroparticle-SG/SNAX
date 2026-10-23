@@ -1,14 +1,12 @@
 import os
-import numpy as np
-import pandas as pd
-from scipy.integrate import trapezoid
-
-from scipy.interpolate import interp1d
-
 
 # Get data file paths
 from importlib.resources import files
 
+import numpy as np
+import pandas as pd
+from scipy.integrate import trapezoid
+from scipy.interpolate import interp1d
 
 _ROOT = files("snudd")
 
@@ -185,6 +183,6 @@ nu_flux_interp = {
 }
 
 nu_flux_array = np.array(
-    list((nu_flux.values())), dtype=object
+    list(nu_flux.values()), dtype=object
 )  # np array of fluxes instead of dict
-E_nus_array = np.array(list((E_nus.values)), dtype=object)
+E_nus_array = np.array(list(E_nus.values), dtype=object)

@@ -2,22 +2,21 @@
 
 import numpy as np
 from scipy.interpolate import interp1d
-from snudd import config
 
+from snudd import config
 
 DATA_PATH = config.get_data("flux_distributions/")
 
 
 def create_dist_keys():
-    "Return neutrino source keys with Be sources replaced with a common Be source."
+    """Return neutrino source keys with Be sources replaced with a common Be
+    source."""
 
     nu_sources = []
     for nu in config.NU_SOURCE_KEYS:
-        if nu == "7Be_3":
-            nu = "7Be"
-        elif nu == "7Be_8":
+        if nu == "7Be_8":
             continue
-        nu_sources.append(nu)
+        nu_sources.append("7Be" if nu == "7Be_3" else nu)
 
     return nu_sources
 

@@ -1,8 +1,9 @@
-"""Creates efficiency functions for DD experiments, which can be extended to a new threshold"""
+"""Creates efficiency functions for DD experiments, which can be extended
+to a new threshold"""
 
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline
-from scipy.optimize import root_scalar, brentq
+from scipy.optimize import brentq, root_scalar
 
 from snudd import config
 
@@ -79,8 +80,8 @@ def linear_extend_strategy(E_R, E_thresh_50_new, efficiency):
 
     funclist = [
         lambda E: efficiency(E + shift),
-        lambda E: efficiency(efficiency.threshold_plateau_E_R),
-        lambda E: efficiency(E),
+        lambda _: efficiency(efficiency.threshold_plateau_E_R),
+        efficiency,
         0.0,
     ]
 
@@ -101,8 +102,8 @@ def log_extend_strategy(E_R, E_thresh_50_new, efficiency):
 
     funclist = [
         lambda E: efficiency(E / shift),
-        lambda E: efficiency(efficiency.threshold_plateau_E_R),
-        lambda E: efficiency(E),
+        lambda _: efficiency(efficiency.threshold_plateau_E_R),
+        efficiency,
         0.0,
     ]
 
@@ -111,9 +112,11 @@ def log_extend_strategy(E_R, E_thresh_50_new, efficiency):
 
 class Efficiency:
     """
-    An interpolant that returns the efficiency function along with some of its important properties. An extension
+    An interpolant that returns the efficiency function along with some of its
+    important properties. An extension
     of the efficiency is also available.
-    Recoil energies are expected to be in GeV, and the data files are expected to be in keV, so the class handles the conversion internally.
+    Recoil energies are expected to be in GeV, and the data files are expected
+    to be in keV, so the class handles the conversion internally.
     """
 
     def __init__(self, data, order=1):
@@ -159,7 +162,8 @@ class Efficiency:
     def extended_efficiency(
         self, E_R, E_thresh_50_new, extend_strategy=log_extend_strategy
     ):
-        """Return efficiency function extended to new, lower 50% threshold energy as per some strategy"""
+        """Return efficiency function extended to new, lower 50% threshold
+        energy as per some strategy"""
         return extend_strategy(E_R, E_thresh_50_new, efficiency=self)
 
     def __call__(self, E_R):
@@ -170,11 +174,12 @@ class Efficiency:
             condlist=[
                 (E_R <= self.E_R_max) & (E_R >= self.E_R_min),
             ],
-            funclist=[lambda E: self._interpolant(E), 0.0],
+            funclist=[self._interpolant, 0.0],
         )
 
 
-# Resolution functions are in terms of recoil energy, and are fractional (sigma / E_R)
+# Resolution functions are in terms of recoil energy, and are fractional
+# (sigma / E_R)
 # TODO: Unify all of these!!
 efficiency_lz_nr = Efficiency(LZ_NR_DATA, order=2)
 threshold_50_lux_nr = (
@@ -205,7 +210,8 @@ efficiency_lz_er_WS24 = Efficiency(LZ_ER_WS24)
 
 
 ######################
-# How are these different from the ones above? Are they just different datasets, or are they different in some other way?
+# How are these different from the ones above? Are they just different
+# datasets, or are they different in some other way?
 efficiency_lz_nr_22 = Efficiency(LZ_NR_22)
 threshold_50_lux_nr_22 = efficiency_lz_nr_22.threshold_50
 

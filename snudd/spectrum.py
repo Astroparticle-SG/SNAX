@@ -1,22 +1,15 @@
 """Provides the DD recoil differential rate spectrum."""
 
 from __future__ import annotations
-from tkinter import E
-
-import typing
 
 import numpy as np
+
 from snudd import config
 from snudd.config import trapezoid
 from snudd.nsi.nsi_probabilities import (
     DensityMatrixCalculator,
     interp_density_sm,
 )
-
-
-if typing.TYPE_CHECKING:
-    from snudd.targets import Target
-
 
 # --- Backend selection (Numba) ---
 # ---------------------------------
@@ -30,14 +23,18 @@ try:
     @nb.njit(parallel=True, fastmath=True)
     def _rate_kernel_numba(nu_fluxes, density_eff, dsigma_mat, weights):
         """
-        Compute rates by explicit contraction and trapezoidal integration with precomputed weights, using Numba for speed.
-        This is much faster than np.einsum + np.trapz for large scans, as it avoids overhead of these functions in the inner loop.
+        Compute rates by explicit contraction and trapezoidal integration with
+        precomputed weights, using Numba for speed.
+        This is much faster than np.einsum + np.trapz for large scans, as it
+        avoids overhead of these functions in the inner loop.
 
         Shapes:
             nu_fluxes  : (N_ER, N_Enu)
             density_eff: (N_ER, N_Enu, 3, 3)
             dsigma_mat : (N_ER, N_Enu, 3, 3)
-            weights    : (N_Enu, N_ER)  (trapezoidal weights for integration over E_nus, transposed to allow broadcasting with nu_fluxes)
+            weights    : (N_Enu, N_ER)  (trapezoidal weights for integration
+                          over E_nus, transposed to allow broadcasting with
+                          nu_fluxes)
         """
 
         N_ER, N_Enu = nu_fluxes.shape
@@ -50,14 +47,19 @@ try:
                 trace = 0.0
                 for i in range(3):
                     for j in range(3):
-                        # Note the order of indices in density_eff and dsigma_mat for the trace:
-                        # we want sum_ij density_eff[r, e, i, j] * dsigma_mat[r, e, j, i]
+                        # Note the order of indices in density_eff and
+                        # dsigma_mat for the trace:
+                        # we want sum_ij density_eff[r, e, i, j]
+                        # * dsigma_mat[r, e, j, i]
                         trace += (
                             density_eff[r, e, i, j] * dsigma_mat[r, e, j, i]
                         )
 
-                # Multiply by flux and trapezoidal weight for this E_nu and add to integral
-                # (handcrafting the integration here to avoid overhead of np.einsum and np.trapz in the inner loop, which can be significant for large scans)
+                # Multiply by flux and trapezoidal weight for this E_nu and add
+                # to integral
+                # (handcrafting the integration here to avoid overhead of
+                # np.einsum and np.trapz in the inner loop, which can be
+                # significant for large scans)
                 integral += nu_fluxes[r, e] * trace * weights[e, r]
 
             rates[r] = integral
@@ -69,9 +71,11 @@ try:
 except ImportError:
     USE_NUMBA = False
 
-    def _rate_kernel_numba(*args, **kwargs):
+    def _rate_kernel_numba(*_args, **_kwargs):
         raise RuntimeError(
-            "Numba backend is not available\nInstall numba in your current Python environment to use this functionality"
+            "Numba backend is not available\n"
+            "Install numba in your current Python environment to use this "
+            "functionality"
         )
 # ---------------------------------
 
@@ -84,7 +88,8 @@ class SpectrumTrace:
     """Target (nucleus or electron) spectrum."""
 
     def __init__(self, target):
-        """Spectrum defined by target, model parameters, and probability type for neutrino probabilities."""
+        """Spectrum defined by target, model parameters, and probability type
+        for neutrino probabilities."""
         self.target = target
         self.model = target.model
         self.osc_params = target.osc_params
@@ -94,8 +99,14 @@ class SpectrumTrace:
         self.nu_density_elements = interp_density_sm
         self.cnadirs = [-1]
         self.cnadir_weights = [1]
-        self._cache_energy = {}  # caches E_nus + flux for each source to avoid repeated interpolation of the flux for each spectrum call, which can be expensive for large scans.
-        self._cache_weights = {}  # cache trapezoidal weights for each unique E_nus grid to avoid repeated computation of trapezoidal weights for each spectrum call, which can be expensive for large scans.
+        # caches E_nus + flux for each source to avoid repeated interpolation
+        # of the flux for each spectrum call, which can be expensive for large
+        # scans.
+        self._cache_energy = {}
+        # cache trapezoidal weights for each unique E_nus grid to avoid
+        # repeated computation of trapezoidal weights for each spectrum call,
+        # which can be expensive for large scans.
+        self._cache_weights = {}
 
     def nu_minimum_energy(self, E_R):
         """Return neutrino minimum energy given a recoil in GeV."""
@@ -108,7 +119,8 @@ class SpectrumTrace:
     def _get_energy_cache(self, nu, E_R):
         """
         Cache (E_nus, flux) for given source and E_R.
-        Saves computation time by avoiding repeated interpolation of the flux for each spectrum call.
+        Saves computation time by avoiding repeated interpolation of the flux
+        for each spectrum call.
         """
         key = (nu, hash(E_R.tobytes()))
 
@@ -131,7 +143,8 @@ class SpectrumTrace:
         return self._cache_energy[key]
 
     def _get_weights(self, E_nus):
-        """Cache trapezoid weights for given E_nus to avoid repeated computation for each spectrum call.
+        """Cache trapezoid weights for given E_nus to avoid repeated
+        computation for each spectrum call.
         E_nus: shape (N_Enu, N_ER)"""
         key = hash(E_nus.tobytes())
 
@@ -146,22 +159,24 @@ class SpectrumTrace:
         return self._cache_weights[key]
 
     def _rate_nu(self, E_R, nu):
-        """Return differential rate for a neutrino source. Overridden for each breakdown by subclasses."""
+        """Return differential rate for a neutrino source. Overridden for each
+        breakdown by subclasses."""
 
         E_nu_min = self.nu_minimum_energy(
             E_R
         )  # Minimum neutrino energies for given recoil energies, shape (N_E,)
-        # Array of interpolating functions for density matrix elements as a function of neutrino energy for given source nu
+        # Array of interpolating functions for density matrix elements as a
+        # function of neutrino energy for given source nu
         density_elements_flux = self.nu_density_elements[nu]
 
-        # MONOCHROMATIC neutrino sources (e.g. 7Be_3/8) have a delta-function flux
+        # MONOCHROMATIC neutrino sources (e.g. 7Be_3/8) have a delta-function
+        # flux
         if nu in config.NU_SOURCE_KEYS_MONO:
             E_nu_mono = (
                 config.E_nus[nu][0] / 1000
             )  # Mono energy in GeV, scalar
-            E_nus_mins = (
-                E_nu_min < E_nu_mono
-            )  # Check if mono energy is above minimum energy; if not, return zero
+            # Check if mono energy is above minimum energy; if not, return zero
+            E_nus_mins = E_nu_min < E_nu_mono
             dsigma_mat = self.target.cross_section_flavour(
                 E_R, E_nu_mono
             )  # Shape (N_E, 3, 3)
@@ -170,7 +185,8 @@ class SpectrumTrace:
             )  # Mono flux in per GeV, shape (1, 1) to allow broadcasting
 
             density_eff = 0
-            # Compute effective density matrix by summing over cnadir angles with corresponding weights
+            # Compute effective density matrix by summing over cnadir angles
+            # with corresponding weights
             # density_eff: (3,3)
             for icnadir in range(len(self.cnadirs)):
                 density_nad = self.density_calc.matrix_from_elements(
@@ -178,9 +194,12 @@ class SpectrumTrace:
                 )  # Shape (3,3)
                 density_eff += self.cnadir_weights[icnadir] * density_nad
 
-            # ---- Perform matrix product and trace as einsum instead of matmul + trace ----
-            # No integration needed for monoenergetic sources, so we just multiply flux by trace to get rate at mono energy,
-            # and then check if mono energy is above minimum energy to return zero if not.
+            # ---- Perform matrix product and trace as einsum instead of
+            # matmul + trace ----
+            # No integration needed for monoenergetic sources, so we just
+            # multiply flux by trace to get rate at mono energy,
+            # and then check if mono energy is above minimum energy to return
+            # zero if not.
             integrated = v_flux * np.einsum(
                 "ij,rij->r", density_eff, dsigma_mat
             )
@@ -198,7 +217,8 @@ class SpectrumTrace:
             [E_R]
         )  # Make E_R an array to allow broadcasting with E_nus
 
-        # Compute cross section matrix for each E_R and E_nu; shape (N_Enu, N_ER, 3, 3)
+        # Compute cross section matrix for each E_R and E_nu;
+        # shape (N_Enu, N_ER, 3, 3)
         dsigma_mat = self.target.cross_section_flavour(
             E_R, E_nus
         )  # (E_nu, E_R, 3, 3)
@@ -206,7 +226,8 @@ class SpectrumTrace:
 
         # ---- Build weighted effective density ----
         density_eff = 0
-        # Compute effective density matrix by summing over cnadir angles with corresponding weights
+        # Compute effective density matrix by summing over cnadir angles with
+        # corresponding weights
         for icnadir in range(len(self.cnadirs)):
             density_nad = self.density_calc.matrix_from_elements(
                 density_elements_flux[icnadir](E_nus)
@@ -217,11 +238,14 @@ class SpectrumTrace:
         )  # Get into correct shape (ER, Enu, 3, 3)
 
         if USE_NUMBA:
-            # Use Numba-optimized kernel for speed if available, which performs the integration by hand to avoid overhead of np.einsum and np.trapz in the inner loop, which can be significant for large scans.
+            # Use Numba-optimized kernel for speed if available, which
+            # performs the integration by hand to avoid overhead of np.einsum
+            # and np.trapz in the inner loop, which can be significant for
+            # large scans.
             weights_trap = self._get_weights(E_nus)  # cache this too!
-            n_targets = self.target.number_targets_mass(
-                E_R[0]
-            )  # Determine number of targets per ER (energy-dependent for electron scattering)
+            # Determine number of targets per ER (energy-dependent for
+            # electron scattering)
+            n_targets = self.target.number_targets_mass(E_R[0])
             rates = (
                 n_targets
                 * _rate_kernel_numba(
@@ -230,8 +254,10 @@ class SpectrumTrace:
                 * config.rate_conv
             )
         else:
-            # Use straightforward NumPy implementation with np.einsum and scipy for clarity if Numba not available.
-            # ---- Perform matrix product and trace as einsum instead of matmul + trace ----
+            # Use straightforward NumPy implementation with np.einsum and scipy
+            # for clarity if Numba not available.
+            # ---- Perform matrix product and trace as einsum instead of
+            # matmul + trace ----
             traces = np.einsum(
                 "reij,reji->re", density_eff, dsigma_mat
             )  # Shape (E_R, E_nu) after einsum
@@ -246,17 +272,22 @@ class SpectrumTrace:
                 * config.rate_conv
             )
 
-        rates[rates < 0] = (
-            0.0  # Set any negative rates to zero, which can happen from numerical issues in the integration if the integrand is very small.
-        )
-        return rates.real  # Return real part of rates, as they should be real but can have small imaginary part from numerical issues in the integration.
+        # Set any negative rates to zero, which can happen from numerical
+        # issues in the integration if the integrand is very small.
+        rates[rates < 0] = 0.0
+        # Return real part of rates, as they should be real but can have small
+        # imaginary part from numerical issues in the integration.
+        return rates.real
 
-    def prepare_density(self, cnadirs=[-1], cnadir_weights=[1], fast=False):
+    def prepare_density(self, cnadirs=(-1,), cnadir_weights=(1,), fast=False):
         """
         Return dictionary of interpolated probabilities for all nu sources.
-        Interpolation done between neutrinos energies of E_nu_min and E_nu_max (MeV).
-        Give a list of cos(nadir) [cnadirs] and corresponding weights [cnadir_weights] to run earth matter evolution.
-        If cnadirs = [-1], no earth matter evolution is done and the density matrix is identity.
+        Interpolation done between neutrinos energies of E_nu_min and E_nu_max
+        (MeV).
+        Give a list of cos(nadir) [cnadirs] and corresponding weights
+        [cnadir_weights] to run earth matter evolution.
+        If cnadirs = [-1], no earth matter evolution is done and the density
+        matrix is identity.
         """
         if len(cnadirs) != len(cnadir_weights):
             raise ValueError(
@@ -269,10 +300,13 @@ class SpectrumTrace:
             self.density_calc.interpolate_earth_density_elements(cnadirs, fast)
         )
 
-    def spectrum(self, E_Rs, total=True, nu: str = None):
+    # TODO: `total` is ignored; the sum is always returned
+    def spectrum(self, E_Rs, total=True, nu: str | None = None):  # noqa: ARG002
         """
-        Return neutrino spectrum for ER in GeV, coupling g_x, A mass m_A, and neutrino type nu (if string).
-        If nu an integer, returns sum over all neutrino spectra. If g_x = 0, we retrieve the SM spectrum (tested).
+        Return neutrino spectrum for ER in GeV, coupling g_x, A mass m_A, and
+        neutrino type nu (if string).
+        If nu an integer, returns sum over all neutrino spectra. If g_x = 0, we
+        retrieve the SM spectrum (tested).
         """
         if nu is not None:
             spectrum_nu = self._spectrum_nu(E_Rs, nu)

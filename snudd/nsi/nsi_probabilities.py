@@ -2,9 +2,11 @@
 
 import numpy as np
 from scipy.interpolate import interp1d
-from snudd import config
-from snudd.nsi import flux_dists, earth_matter as em, oscillation as osc
-from snudd import models
+
+from snudd import config, models
+from snudd.nsi import earth_matter as em
+from snudd.nsi import flux_dists
+from snudd.nsi import oscillation as osc
 
 
 class ProbabilityCalculator:
@@ -123,7 +125,8 @@ class SolarDensityMatrixCalculator(ProbabilityCalculator):
         super().__init__(model, osc_params, adiabatic_check)
 
     def density_mass(self, E_nus, nu: str):
-        """Return the neutrino density matrix in the mass basis sampled at N energies of the energy array E_nus.
+        """Return the neutrino density matrix in the mass basis sampled at N
+        energies of the energy array E_nus.
         Returns an array of matrices with shape (N, 3, 3).
         """
 
@@ -153,7 +156,8 @@ class SolarDensityMatrixCalculator(ProbabilityCalculator):
         return matrix
 
     def density(self, E_nus, nu: str):
-        """Return the neutrino density matrix in the flavour basis sampled at N energies of the energy array E_nus.
+        """Return the neutrino density matrix in the flavour basis sampled at N
+        energies of the energy array E_nus.
         Returns an array of matrices with shape (N, 3, 3).
         """
 
@@ -254,7 +258,8 @@ class SolarDensityMatrixCalculator(ProbabilityCalculator):
 
 
 class DensityMatrixCalculator(SolarDensityMatrixCalculator):
-    """Class to calculate the evolution of the density matrix through the Earth matter using the PREM model."""
+    """Class to calculate the evolution of the density matrix through the Earth
+    matter using the PREM model."""
 
     def __init__(
         self,
@@ -270,18 +275,24 @@ class DensityMatrixCalculator(SolarDensityMatrixCalculator):
         self.earth_propagator = em.EarthProbEvolve(
             model=self.model,
             earthmodel=self.earth_model,
-            Nst=Nslabs,  # Number of slices to divide the Earth into for the evolution
-            Nav=50,  # Number of points to average over for the matter potential in each slice
+            # Number of slices to divide the Earth into for the evolution
+            Nst=Nslabs,
+            # Number of points to average over for the matter potential in each
+            # slice
+            Nav=50,
             osc_params=self.osc_params,
         )
 
-    def density_earth(self, E_nus, cnadirs=[-1], weights=[1], nu="8B"):
+    def density_earth(self, E_nus, cnadirs=(-1,), weights=(1,), nu="8B"):
         """
-        Compute density matrix propagated through earth matter under incident angle cos(eta)=cnadir.
-        Works also for wieghted histogram of incident angles. Returns weighted density matrix.
+        Compute density matrix propagated through earth matter under incident
+        angle cos(eta)=cnadir.
+        Works also for wieghted histogram of incident angles. Returns weighted
+        density matrix.
         """
 
-        assert len(cnadirs) == len(weights)
+        if len(cnadirs) != len(weights):
+            raise ValueError("cnadirs and weights must have the same length.")
 
         # Get solar density matrix
         rho_sol = super().density(E_nus, nu)
@@ -298,22 +309,27 @@ class DensityMatrixCalculator(SolarDensityMatrixCalculator):
         return rho_earth
 
     def interpolate_earth_density_elements(
-        self, cnadirs=[-1], fast=False, E_nu_min=3.4640e-3, E_nu_max=1.8784e1
+        self, cnadirs=(-1,), fast=False, E_nu_min=3.4640e-3, E_nu_max=1.8784e1
     ):
         """
         Return dictionary of interpolated de for all nu sources.
-        Interpolation done between neutrinos energies of E_nu_min and E_nu_max (MeV).
-        By default, cos(nadir) = -1, i.e. neutrinos coming from the zenith direction and not crossing the Earth.
+        Interpolation done between neutrinos energies of E_nu_min and E_nu_max
+        (MeV).
+        By default, cos(nadir) = -1, i.e. neutrinos coming from the zenith
+        direction and not crossing the Earth.
         """
 
         E_nus = np.geomspace(E_nu_min / 1e3, E_nu_max / 1e3, 500)  # GeV!
 
-        # Precompute earth matter evolution S matrices for all energies and angles to speed up interpolation of density matrix elements at the end
+        # Precompute earth matter evolution S matrices for all energies and
+        # angles to speed up interpolation of density matrix elements at the
+        # end
         # Do this for each nadir angle
         # ------------------------------------------------
         S_angles = []
         for cnadir in cnadirs:
-            # Compute S matrix only once, does not depend on the initial density matrix
+            # Compute S matrix only once, does not depend on the initial
+            # density matrix
             # 1) build S(E) for all energies
             S_list = self.earth_propagator.S_matrix_batch(
                 E_nus, cnadir, fast
@@ -325,15 +341,16 @@ class DensityMatrixCalculator(SolarDensityMatrixCalculator):
         interp_expanded_rhos = {}
 
         for nu in config.NU_SOURCE_KEYS:
-            # Get the initial density matrix at Earth surface for this nu source
+            # Get the initial density matrix at Earth surface for this nu
+            # source
             rhos = self.density(E_nus, nu)
             angular_interps = []
 
-            for i, cnadir in enumerate(cnadirs):
-                S_earth = S_angles[i]
+            for S_earth in S_angles:
                 S_earth_dag = np.swapaxes(S_earth.conj(), -1, -2)  # (N,3,3)
 
-                # Compute fully evolved density matrix: S ρ S†   (use matmul with batch dims)
+                # Compute fully evolved density matrix: S ρ S†   (use matmul
+                # with batch dims)
                 tmp = np.matmul(S_earth, rhos)  # (N,3,3)
                 rhos = np.matmul(tmp, S_earth_dag)  # (N,3,3)
 
@@ -362,7 +379,8 @@ class DensityMatrixCalculator(SolarDensityMatrixCalculator):
 
                 angular_interps.append(interp1d(E_nus, expanded_rhos))
 
-            # Store the interpolations for this nu source and all angles in a list
+            # Store the interpolations for this nu source and all angles in a
+            # list
             interp_expanded_rhos[nu] = angular_interps
 
         return interp_expanded_rhos

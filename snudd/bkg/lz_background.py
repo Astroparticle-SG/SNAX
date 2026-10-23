@@ -60,11 +60,13 @@ kr85_bkg_interp = interpolate.interp1d(
 )
 det_bkg_interp = interpolate.interp1d(E_det_bkg / 1e6, det_bkg, kind="linear")
 
+
 ### This is the one to import
-total_bkg_spec_fn = lambda E_R: (
-    rn220_bkg_interp(E_R)
-    + rn222_bkg_interp(E_R)
-    + xe136_bkg_interp(E_R)
-    + kr85_bkg_interp(E_R)
-    + det_bkg_interp(E_R)
-)
+def total_bkg_spec_fn(E_R):
+    return (
+        rn220_bkg_interp(E_R)
+        + rn222_bkg_interp(E_R)
+        + xe136_bkg_interp(E_R)
+        + kr85_bkg_interp(E_R)
+        + det_bkg_interp(E_R)
+    )

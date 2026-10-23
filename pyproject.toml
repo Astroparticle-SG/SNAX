@@ -141,7 +141,11 @@ ignore = [
     "N803",   # Argument names
     "N806",   # Variable names in functions
     "N816",   # Mixed-case global names
+    "SIM300", # Yoda conditions; misfires since it reads E_R etc. as constants
 ]
+
+# Greek letters and the minus sign are deliberate physics notation in comments
+allowed-confusables = ["ρ", "−"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"]  # Allow assert statements in tests

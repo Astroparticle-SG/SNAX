@@ -1,7 +1,9 @@
 """Oscillation quantities."""
 
 from dataclasses import dataclass
+
 import numpy as np
+
 from snudd import config
 from snudd.nsi import solar_profiles
 
@@ -169,7 +171,8 @@ def eps_N(nsi_model, osc_params):
 
 
 def delta_vacuum_energy(E_nu, osc_params):
-    """Return the difference in the vacuum energy eigenvalues between first and second mass eigenstates."""
+    """Return the difference in the vacuum energy eigenvalues between first and
+    second mass eigenstates."""
 
     return osc_params.delta_m12 / (2 * E_nu)
 
@@ -195,7 +198,8 @@ def xi(x, nsi_model):
 
 
 def potential_cc_dot(x):
-    """Return derivative of charged-current potential with respect to solar fraction."""
+    """Return derivative of charged-current potential with respect to solar
+    fraction."""
 
     return (
         np.sqrt(2) * config.G_F * solar_profiles.electron_density_derivative(x)
@@ -203,7 +207,8 @@ def potential_cc_dot(x):
 
 
 def xi_dot(x, nsi_model):
-    """Return derivative of xi parameter with respect to solar fraction for a given NSI model."""
+    """Return derivative of xi parameter with respect to solar fraction for a
+    given NSI model."""
 
     return (
         nsi_model.xi_n * solar_profiles.neutron_electron_fraction_derivative(x)
@@ -259,7 +264,8 @@ def q(x, E_nu, nsi_model, osc_params):
 
 
 def delta_matter_energy(x, E_nu, nsi_model, osc_params):
-    """Return the difference in the matter energy eigenvalues between first and second mass eigenstates."""
+    """Return the difference in the matter energy eigenvalues between first and
+    second mass eigenstates."""
 
     return delta_vacuum_energy(E_nu, osc_params) * np.sqrt(
         p(x, E_nu, nsi_model, osc_params) ** 2
@@ -304,7 +310,8 @@ def c12m_2(x, E_nu, nsi_model, osc_params):
 
 
 def tanchi(x, E_nu, nsi_model, osc_params):
-    """The tan of the effective matter mixing phase due to CP and/or complex NSI"""
+    """The tan of the effective matter mixing phase due to CP and/or complex
+    NSI"""
 
     sin_2theta12 = osc_params.s12_2
     d_vac = delta_vacuum_energy(E_nu, osc_params) / 2
@@ -449,11 +456,13 @@ def gamma_check(E_nu, nsi_model, osc_params, threshold=100):
     gamma_val = gamma_min(E_nu, nsi_model, osc_params)
     if gamma_val < threshold:
         print(
-            f"Warning: minimum gamma is {gamma_val}, which is below set threshold of {threshold} for energy {E_nu} GeV. Adiabatic approximation may not be valid."
+            f"Warning: minimum gamma is {gamma_val}, which is below set "
+            f"threshold of {threshold} for energy {E_nu} GeV. Adiabatic "
+            "approximation may not be valid."
         )
 
 
-"""----------------------Default oscillation parameters-----------------------"""
+"""--------------------Default oscillation parameters---------------------"""
 
 
 # OLD osc vals from 2006.11237

@@ -5,19 +5,18 @@ For Germanium this is motivated by Scholz et al (1608.03588)
 For Argon this is motivated by Mei et al (0712.2470)
 """
 
-from typing import Callable
+from collections.abc import Callable
 
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline
-
-import snudd.config as config
 
 # from snudd.targets import nucleus_ge, nucleus_xe
 from snudd.targets import nucleus_xe
 
 
 class Quenching:
-    """Provides integrated functionality to quenching factor, including a derivative and a keV_nr to keV_ee converter."""
+    """Provides integrated functionality to quenching factor, including a
+    derivative and a keV_nr to keV_ee converter."""
 
     def __init__(self, quenching: Callable):
         self.quenching = quenching
@@ -59,7 +58,8 @@ def lindhard_k(nucleus):
 
 
 def lindhard_factor(E_nr, nucleus, k=None):
-    """Return the classical Lindhard theory implementation of the quenching factor."""
+    """Return the classical Lindhard theory implementation of the quenching
+    factor."""
     if k is None:
         k = lindhard_k(nucleus)  # Classic lindhard if k not supplied
     eps = 11.5 * nucleus.Z ** (-7 / 3) * E_nr

@@ -22,5 +22,5 @@ def rrpa_scaling(E_R):
     condlist = [
         (E_R >= E_R_RRPA.min() / 1e6) & (E_R <= E_R_RRPA.max() / 1e6),
     ]  # 1e6 for GeV
-    funclist = [lambda E: rrpa_step_ratio_interp(E), 1.0]
+    funclist = [rrpa_step_ratio_interp, 1.0]
     return np.piecewise(E_R, condlist, funclist)
