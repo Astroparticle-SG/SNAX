@@ -3,6 +3,8 @@
     <img src="https://github.com/SNuDD/SNuDD/blob/main/snudd_logo.png" alt="Description" width="400">
 </p>
 
+[![tests](https://github.com/Astroparticle-SG/SNAX/actions/workflows/tests.yml/badge.svg)](https://github.com/Astroparticle-SG/SNAX/actions/workflows/tests.yml)
+[![Coverage Status](https://coveralls.io/repos/github/Astroparticle-SG/SNAX/badge.svg?branch=main)](https://coveralls.io/github/Astroparticle-SG/SNAX?branch=main)
 [![arXiv](http://img.shields.io/badge/arXiv-2607.22817-B31B1B.svg)](https://arxiv.org/abs/2607.22817)
 [![arXiv](http://img.shields.io/badge/arXiv-2302.12846-B31B1B.svg)](https://arxiv.org/abs/2302.12846)
 
