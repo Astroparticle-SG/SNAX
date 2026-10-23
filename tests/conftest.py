@@ -8,9 +8,7 @@ from snudd.rrpa import rrpa_scaling
 from snudd.targets import Electron, Nucleus
 
 
-NSI_MUTAU = np.array([[0.0, 0.0, 0.0],
-                      [0.0, 0.0, 0.1],
-                      [0.0, 0.1, 0.0]])
+NSI_MUTAU = np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.1], [0.0, 0.1, 0.0]])
 
 
 @pytest.fixture

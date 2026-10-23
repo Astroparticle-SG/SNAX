@@ -72,10 +72,8 @@ In the following example code, we show how to set up an NSI model instance for a
 from snudd.models import GeneralNSI
 
 # Define NSI parameters
-NSI_matrix = numpy.array([[0.0, 0.0, 0.0],
-                          [0.0, 0.0, 0.1],
-                          [0.0, 0.1, 0.0]])
-NSI_eta = numpy.pi/4
+NSI_matrix = numpy.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.1], [0.0, 0.1, 0.0]])
+NSI_eta = numpy.pi / 4
 NSI_phi = 0
 
 # Create NSI model object
@@ -92,12 +90,12 @@ The following lines of code demonstrate how to setup a `DensityMatrixCalculator`
 ```python
 from snudd.nsi.nsi_probabilities import DensityMatrixCalculator
 
-# Create probability calculator 
+# Create probability calculator
 NSI_density_calculator = DensityMatrixCalculator(NSI_model)
 
 # Calculate solar density matrix over neutrino energy range
-Enus = numpy.geomspace(1e-6, 1e0, 200) # in GeV
-solar_density = NSI_density_calculator.density(Enus, '8B')
+Enus = numpy.geomspace(1e-6, 1e0, 200)  # in GeV
+solar_density = NSI_density_calculator.density(Enus, "8B")
 ```
 
 #### Including Earth-matter Effects:
@@ -111,13 +109,13 @@ from snudd.geometry import SolarAngles
 
 # Define experimental parameters (location, data taking period)
 lat_gs = 42.47  # Latitude of Gran Sasso in degrees north
-t0     = 0      # t0 - beginning in days after 3rd January (perihelion)
-T      = 365    # T  - duration of data taking in days
+t0 = 0  # t0 - beginning in days after 3rd January (perihelion)
+T = 365  # T  - duration of data taking in days
 
 # Define solar angles calculator for Gran Sasso
 GranSasso = SolarAngles(latitude=lat_gs, t0=t0, T=T)
 
-# Generate histogram of cos(nadir) 
+# Generate histogram of cos(nadir)
 cnadirs, weights = GranSasso.cnadir_hist(bins=30)
 ```
 
@@ -126,8 +124,10 @@ With this weighted histogram of neutrino incident angles, we can compute the ful
 
 ```python
 # Calculate full density matrix over neutrino energy range
-Enus = numpy.geomspace(1e-6, 1e0, 200) # in GeV
-earth_density = NSI_density_calculator.density_earth(Enus, cnadirs, weights, nu='8B')
+Enus = numpy.geomspace(1e-6, 1e0, 200)  # in GeV
+earth_density = NSI_density_calculator.density_earth(
+    Enus, cnadirs, weights, nu="8B"
+)
 ```
 
 
@@ -155,7 +155,7 @@ from snudd import config
 from snudd.targets import Nucleus
 
 # Create scattering target
-Xe_nucleus = Nucleus(54, 132, mass=131.9041535 * config.u) # single isotope 
+Xe_nucleus = Nucleus(54, 132, mass=131.9041535 * config.u)  # single isotope
 
 # Load NSI model in scattering target and generate density matrix
 Xe_nucleus.update_model(NSI_model)
@@ -175,15 +175,17 @@ As for CEvNS, we first setup a `Nucleus` object for the host atom, which we use 
 
 ```python
 from snudd import config
-from snudd.targets import Nucleus, Electron   # still requires the host nucleus
-from snudd.binding import binding_xe          # dataclass of binding energy data of xenon 
-from snudd.rrpa    import rrpa_scaling        # rrpa scaling for bound electron
+from snudd.targets import Nucleus, Electron  # still requires the host nucleus
+from snudd.binding import (
+    binding_xe,
+)  # dataclass of binding energy data of xenon
+from snudd.rrpa import rrpa_scaling  # rrpa scaling for bound electron
 
 # Create host nucleus
-Xe_nucleus = Nucleus(54, 132, mass=131.9041535 * config.u) # single isotope 
+Xe_nucleus = Nucleus(54, 132, mass=131.9041535 * config.u)  # single isotope
 
 # Create bound electron object
-Xe_electron = Electron(Xe_nucleus, binding_xe, rrpa_scaling) 
+Xe_electron = Electron(Xe_nucleus, binding_xe, rrpa_scaling)
 Xe_electron.update_model(NSI_model)
 Xe_electron.prepare_density()
 
@@ -205,22 +207,31 @@ evaluated over a range of energies (`E_Rs`), an `efficiency` function, and a `re
 
 ```python
 from snudd.efficiencies import efficiency_lz_er_WS24
-from snudd.resolution   import res_lz_er
-from snudd.resolution   import Convolver
+from snudd.resolution import res_lz_er
+from snudd.resolution import Convolver
+
 
 # Counts @ future xenon detector
 def counts_future_xe(specturm, E_Rs, E1, E2):
-    exposure_future = 200. # t yrs
-    convolution_lz_sig = Convolver(E_Rs, specturm, efficiency_lz_er_WS24, res_lz_er)
+    exposure_future = 200.0  # t yrs
+    convolution_lz_sig = Convolver(
+        E_Rs, specturm, efficiency_lz_er_WS24, res_lz_er
+    )
     return convolution_lz_sig.convolved_binned_rate(E1, E2) * exposure_future
 
-# Definine histogram binning 
-bin_edges   = numpy.linspace(1, 20, 20, endpoint=True) / 1e6 # Bin edges in GeV 
-bin_width   = bin_edges[1] - bin_edges[0]
-bin_centers = bin_edges[:-1] + bin_width/2
+
+# Definine histogram binning
+bin_edges = numpy.linspace(1, 20, 20, endpoint=True) / 1e6  # Bin edges in GeV
+bin_width = bin_edges[1] - bin_edges[0]
+bin_centers = bin_edges[:-1] + bin_width / 2
 
 # Apply detector effects to neutrino spectrum
-counts_er = [counts_future_xe(NSI_spec_er, E_Rs, (bc - bin_width/2), (bc + bin_width/2)) for bc in bin_centers]
+counts_er = [
+    counts_future_xe(
+        NSI_spec_er, E_Rs, (bc - bin_width / 2), (bc + bin_width / 2)
+    )
+    for bc in bin_centers
+]
 ```
 
 

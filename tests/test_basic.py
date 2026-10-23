@@ -1,4 +1,5 @@
 """Basic correctness checks: modules import, and the main entry points run and return well-formed output."""
+
 import importlib
 
 import numpy as np
@@ -6,7 +7,10 @@ import pytest
 
 from snudd.geometry import SolarAngles
 from snudd.models import SM, GeneralNSI
-from snudd.nsi.nsi_probabilities import DensityMatrixCalculator, SolarDensityMatrixCalculator
+from snudd.nsi.nsi_probabilities import (
+    DensityMatrixCalculator,
+    SolarDensityMatrixCalculator,
+)
 
 
 MODULES = [
@@ -47,14 +51,18 @@ def test_solar_density_shape(model, e_nus):
 
 def test_earth_density_shape(nsi_model, e_nus):
     """The Earth-matter evolved density matrix should also be a finite (N, 3, 3) array."""
-    rho = DensityMatrixCalculator(nsi_model).density_earth(e_nus, [0.5], [1.0], nu="8B")
+    rho = DensityMatrixCalculator(nsi_model).density_earth(
+        e_nus, [0.5], [1.0], nu="8B"
+    )
     assert rho.shape == (len(e_nus), 3, 3)
     assert np.all(np.isfinite(rho))
 
 
 def test_cnadir_hist_shape():
     """The nadir-angle histogram should return one cos(nadir) and one weight per bin, with valid cosines."""
-    cnadirs, weights = SolarAngles(latitude=42.47, t0=0, T=365).cnadir_hist(bins=10)
+    cnadirs, weights = SolarAngles(latitude=42.47, t0=0, T=365).cnadir_hist(
+        bins=10
+    )
     assert cnadirs.shape == weights.shape == (10,)
     assert np.all(np.abs(cnadirs) <= 1)
 

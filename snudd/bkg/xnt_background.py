@@ -20,13 +20,14 @@ E_R_nu = np.insert(E_R_nu, len(E_R_nu), 100)
 nu_bkg = np.insert(nu_bkg, 0, nu_bkg[0])
 nu_bkg = np.insert(nu_bkg, len(nu_bkg), nu_bkg[-1])
 
-total_bkg_interp = interpolate.interp1d(E_R_total/1e6, total_bkg)
-nu_bkg_interp = interpolate.interp1d(E_R_nu/1e6, nu_bkg)
+total_bkg_interp = interpolate.interp1d(E_R_total / 1e6, total_bkg)
+nu_bkg_interp = interpolate.interp1d(E_R_nu / 1e6, nu_bkg)
 
 total_bkg_spec_fn = lambda E_R: total_bkg_interp(E_R) - nu_bkg_interp(E_R)
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+
     E_Rs = np.logspace(-1, np.log10(30)) / 1e6
 
     plt.figure()
@@ -35,4 +36,4 @@ if __name__ == "__main__":
     plt.loglog(E_Rs * 1e6, total_bkg_spec_fn(E_Rs))
     plt.show()
 
-    print(trapezoid(total_bkg_spec_fn(E_Rs), E_Rs*1e6))
+    print(trapezoid(total_bkg_spec_fn(E_Rs), E_Rs * 1e6))

@@ -1,4 +1,5 @@
 """Useful functions for NSI work"""
+
 import numpy as np
 from snudd.models import GeneralNSI
 
@@ -13,6 +14,7 @@ def invert_nsi_d(eps_d, eta, phi):
     """Given the full, unfactorised NSI matrix element for the down-quark, return the flavour-specific and
     charge independent matrix element, eps_{alpha beta}^{eta}."""
     return eps_d / GeneralNSI(0, eta, phi).xi_d
+
 
 def invert_nsi_e(eps_e, eta, phi):
     """Given the full, unfactorised NSI matrix element for the electron, return the flavour-specific and
@@ -47,6 +49,7 @@ def map_eps(eps_prime, eta_prime, phi, c=True):
     eta = map_eta(eta_prime, phi)
 
     if c or eta_prime == 0:
-        return eps_prime * (np.cos(eta_prime) / np.cos(eta) /
-                            (np.sin(phi) + np.cos(phi)))
+        return eps_prime * (
+            np.cos(eta_prime) / np.cos(eta) / (np.sin(phi) + np.cos(phi))
+        )
     return eps_prime * np.sin(eta_prime) / np.sin(eta)

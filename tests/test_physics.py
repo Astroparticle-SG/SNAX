@@ -1,17 +1,23 @@
 """Physics sanity checks: outputs obey the constraints expected from the underlying physics."""
+
 import numpy as np
 
 from snudd.geometry import SolarAngles
 from snudd.models import SM
 from snudd.nsi import oscillation as osc
-from snudd.nsi.nsi_probabilities import DensityMatrixCalculator, SolarDensityMatrixCalculator
+from snudd.nsi.nsi_probabilities import (
+    DensityMatrixCalculator,
+    SolarDensityMatrixCalculator,
+)
 from snudd.targets import helm_form_factor
 
 
 def _assert_density_matrix(rho):
     """Check that each rho[i] is Hermitian, unit-trace and positive semi-definite."""
     np.testing.assert_allclose(rho, rho.conj().transpose(0, 2, 1), atol=1e-12)
-    np.testing.assert_allclose(np.trace(rho, axis1=1, axis2=2), 1.0, atol=1e-12)
+    np.testing.assert_allclose(
+        np.trace(rho, axis1=1, axis2=2), 1.0, atol=1e-12
+    )
     assert np.all(np.linalg.eigvalsh(rho) > -1e-12)
 
 
@@ -32,17 +38,25 @@ def test_helm_form_factor():
 
 def test_solar_density_matrix(model, e_nus):
     """The solar density matrix must be a valid density matrix: Hermitian, unit trace and positive semi-definite."""
-    _assert_density_matrix(SolarDensityMatrixCalculator(model).density(e_nus, "8B"))
+    _assert_density_matrix(
+        SolarDensityMatrixCalculator(model).density(e_nus, "8B")
+    )
 
 
 def test_earth_density_matrix(nsi_model, e_nus):
     """Evolution through the Earth is unitary, so the density matrix must stay valid after it."""
-    _assert_density_matrix(DensityMatrixCalculator(nsi_model).density_earth(e_nus, [0.5], [1.0], nu="8B"))
+    _assert_density_matrix(
+        DensityMatrixCalculator(nsi_model).density_earth(
+            e_nus, [0.5], [1.0], nu="8B"
+        )
+    )
 
 
 def test_solar_survival_probability_msw(e_nus):
     """P_ee should drop from the vacuum-dominated to the matter-dominated regime."""
-    p_ee = SolarDensityMatrixCalculator(SM()).density(e_nus, "8B")[:, 0, 0].real
+    p_ee = (
+        SolarDensityMatrixCalculator(SM()).density(e_nus, "8B")[:, 0, 0].real
+    )
     assert np.all(np.diff(p_ee) < 0)
     assert 0.5 < p_ee[0] < 0.6
     assert 0.3 < p_ee[-1] < 0.35

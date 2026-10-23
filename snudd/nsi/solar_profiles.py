@@ -1,5 +1,5 @@
 """Profiles of electron and electron/neutron inside the Sun. Differentiated quantities relevant for calculating
- adiabaticity parameter also included."""
+adiabaticity parameter also included."""
 
 import numpy as np
 from snudd import config
@@ -26,7 +26,7 @@ def log10_electron_density(x):
     fraction r / R_SUN. Expression taken from https://arxiv.org/pdf/astro-ph/0511337.pdf.
     """
 
-    return e1 - e2 * x - e3 * np.exp(-(x / e4) ** e5)
+    return e1 - e2 * x - e3 * np.exp(-((x / e4) ** e5))
 
 
 def log10_neutron_electron_density(x):
@@ -34,13 +34,15 @@ def log10_neutron_electron_density(x):
     fraction r / R_SUN. Expression derived from neutron density taken from https://arxiv.org/pdf/astro-ph/0511337.pdf.
     """
 
-    return (n1 - e1) - (n2 - e2) * x + e3 * np.exp(-(x / e4) ** e5)
+    return (n1 - e1) - (n2 - e2) * x + e3 * np.exp(-((x / e4) ** e5))
 
 
 def electron_density(x):
     """Return electron number density in GeV^3."""
 
-    return N_A * 10 ** (log10_electron_density(x)) / (M2PERGEV * 1e-2) ** 3  # 1e-2 m -> cm conv
+    return (
+        N_A * 10 ** (log10_electron_density(x)) / (M2PERGEV * 1e-2) ** 3
+    )  # 1e-2 m -> cm conv
 
 
 def neutron_electron_fraction(x):
@@ -52,22 +54,35 @@ def neutron_electron_fraction(x):
 def electron_density_derivative_scaling(x):
     """Return scaling relationship for derivative of electron number density profile."""
 
-    return np.log(10) * (-e2 + (e3 * e5 / e4) * (x / e4) ** (e5 - 1) * np.exp(-(x / e4) ** e5))
+    return np.log(10) * (
+        -e2 + (e3 * e5 / e4) * (x / e4) ** (e5 - 1) * np.exp(-((x / e4) ** e5))
+    )
 
 
 def neutron_electron_fraction_derivative_scaling(x):
     """Return scaling relationship for derivative of neutron/electron number density profile."""
 
-    return np.log(10) * (- (n2 - e2) - e3 * e5 / e4 * (x/e4)**(e5 - 1) * np.exp(-(x/e4)**e5))
+    return np.log(10) * (
+        -(n2 - e2)
+        - e3 * e5 / e4 * (x / e4) ** (e5 - 1) * np.exp(-((x / e4) ** e5))
+    )
 
 
 def electron_density_derivative(x):
     """Return the derivative of the electron number density profile."""
 
-    return electron_density(x) * electron_density_derivative_scaling(x) / (R_SUN * M2PERGEV)
+    return (
+        electron_density(x)
+        * electron_density_derivative_scaling(x)
+        / (R_SUN * M2PERGEV)
+    )
 
 
 def neutron_electron_fraction_derivative(x):
     """Return the derivative of the electron number density profile."""
 
-    return neutron_electron_fraction(x) * neutron_electron_fraction_derivative_scaling(x) / (R_SUN * M2PERGEV)
+    return (
+        neutron_electron_fraction(x)
+        * neutron_electron_fraction_derivative_scaling(x)
+        / (R_SUN * M2PERGEV)
+    )

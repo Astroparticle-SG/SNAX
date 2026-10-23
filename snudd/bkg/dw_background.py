@@ -11,33 +11,42 @@ E_R_total = np.insert(E_R_total, 0, 0.01)
 double_bkg = np.insert(double_bkg, 0, 1e-5) / 0.005  # As figure with 99.5% cut
 
 E_R_range = np.logspace(-2, 2, 1000) / 1e6
-interp_double = interpolate.interp1d(E_R_total / 1e6, double_bkg, kind='linear')
+interp_double = interpolate.interp1d(
+    E_R_total / 1e6, double_bkg, kind="linear"
+)
 range_double = interp_double(E_R_range)
 
 ### FLAT ###
 
-flat_bkg_rate_scalar = (19 + 565 + 139) / (30 - 2) / 14  # Taken from Table 2 of 1309.7024. Converted to /ton-yr-keVnr.
+flat_bkg_rate_scalar = (
+    (19 + 565 + 139) / (30 - 2) / 14
+)  # Taken from Table 2 of 1309.7024. Converted to /ton-yr-keVnr.
 total_bkg_spec_fn = lambda E_R: flat_bkg_rate_scalar + interp_double(E_R)
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+
     E_Rs = np.logspace(-2, np.log10(50)) / 1e6
 
+    plt.loglog(E_Rs * 1e6, total_bkg_spec_fn(E_Rs), label="interpolated total")
 
-       
-    plt.loglog(E_Rs * 1e6, total_bkg_spec_fn(E_Rs),
-               label="interpolated total")
+    plt.loglog(E_R_total, double_bkg, label="Double beta decay", ls=":")
 
-    plt.loglog(E_R_total, double_bkg, label="Double beta decay", ls=':')
+    plt.axhline(flat_bkg_rate_scalar, label="Flat background", ls="--")
 
-    plt.axhline(flat_bkg_rate_scalar, label="Flat background", ls='--')
+    plt.loglog(
+        E_R_total,
+        double_bkg * 0.005,
+        label=r"$\beta{\rm-decay}\, 99.5\% {\rm cut}$",
+        ls=":",
+    )
 
-
-    plt.loglog(E_R_total, double_bkg*0.005, label=r"$\beta{\rm-decay}\, 99.5\% {\rm cut}$", ls=':')
-
-    #plt.title(r"Theoretical E$\nu$ES rate in Xe")
-    plt.ylabel(r'${\rm d}R/{\rm d}E_R\,\,\left[{\rm ton}^{-1}\,{\rm yr}^{-1}\,{\rm keV}^{-1}\right]$', size=14)
-    plt.xlabel(r'$E_{R}\,\,\left[{\rm keV}\right]$', size=14)
+    # plt.title(r"Theoretical E$\nu$ES rate in Xe")
+    plt.ylabel(
+        r"${\rm d}R/{\rm d}E_R\,\,\left[{\rm ton}^{-1}\,{\rm yr}^{-1}\,{\rm keV}^{-1}\right]$",
+        size=14,
+    )
+    plt.xlabel(r"$E_{R}\,\,\left[{\rm keV}\right]$", size=14)
     plt.xlim(xmin=1.0)
     plt.ylim(ymin=5e-4)
     plt.legend()
