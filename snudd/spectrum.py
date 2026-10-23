@@ -300,7 +300,9 @@ class SpectrumTrace:
             self.density_calc.interpolate_earth_density_elements(cnadirs, fast)
         )
 
-    # TODO: `total` is ignored; the sum is always returned
+    # TODO: Bug: `total` is ignored and the summed spectrum is always
+    # returned; `total=False` should return the per-source spectra, as
+    # `_total_spectrum` (currently unused) does.
     def spectrum(self, E_Rs, total=True, nu: str | None = None):  # noqa: ARG002
         """
         Return neutrino spectrum for ER in GeV, coupling g_x, A mass m_A, and

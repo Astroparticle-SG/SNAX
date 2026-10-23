@@ -351,6 +351,10 @@ class DensityMatrixCalculator(SolarDensityMatrixCalculator):
 
                 # Compute fully evolved density matrix: S ρ S†   (use matmul
                 # with batch dims)
+                # TODO: Bug: `rhos` is overwritten, so each angle after the
+                # first evolves the previous angle's result (S2 S1 ρ S1† S2†)
+                # instead of the solar density matrix (S2 ρ S2†). Affects any
+                # call with more than one nadir angle.
                 tmp = np.matmul(S_earth, rhos)  # (N,3,3)
                 rhos = np.matmul(tmp, S_earth_dag)  # (N,3,3)
 
